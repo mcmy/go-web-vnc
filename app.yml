@@ -1,0 +1,5 @@
+vnc:
+  port: 9091
+  tls-key: "./etc/tls/client-key.pem"
+  tls-cert: "./etc/tls/client-cert.pem"
+  tls-ca-certs: "./etc/tls/ca-cert.pem"
