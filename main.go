@@ -84,14 +84,14 @@ func main() {
 	if err := killProcessUsingPort("5900"); err == nil {
 		time.Sleep(time.Second * 3)
 	}
-	if err := os.RemoveAll(".win_vnc"); err != nil {
+	if err := os.RemoveAll(".tight_vnc"); err != nil {
 		log.Fatalln(err)
 	}
-	if err := ExtraEmbedFs(public_fs.EmbedVNC, "win_vnc", ".cache"); err != nil {
+	if err := ExtraEmbedFs(public_fs.EmbedVNC, "tight_vnc", ".cache"); err != nil {
 		log.Fatalln(err)
 	}
 	go func() {
-		if err := exec.Command(".cache/win_vnc/winvnc.exe").Run(); err != nil {
+		if err := exec.Command(".cache/tight_vnc/TightVNCServerPortable.exe").Run(); err != nil {
 			log.Fatalln(err)
 		}
 	}()
@@ -138,13 +138,15 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server Shutdown:", err)
-	}
 
 	if err := killProcessUsingPort("5900"); err != nil {
 		log.Fatal("Server Shutdown:", err)
 	}
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal("Server Shutdown:", err)
+	}
+
 	log.Println("Server exiting")
 }
 

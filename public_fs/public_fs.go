@@ -5,5 +5,5 @@ import "embed"
 //go:embed novnc
 var EmbedFiles embed.FS
 
-//go:embed win_vnc
+//go:embed tight_vnc
 var EmbedVNC embed.FS
