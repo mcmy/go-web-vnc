@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go-vnc-proxy/conf"
@@ -43,7 +44,7 @@ func init() {
 	//}
 }
 
-func findWindowsPortPid(port string) string {
+func findWindowsPortProcessPID(port string) string {
 	cmd := exec.Command("cmd", "/C", "netstat -aon | findstr", fmt.Sprintf(":%s", port))
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.Output()
@@ -63,18 +64,54 @@ func findWindowsPortPid(port string) string {
 	return pid
 }
 
-func killProcessUsingPort(port string) error {
-	pid := findWindowsPortPid(port)
+func killProcessUsingPort(port string, force bool) error {
+	pid := findWindowsPortProcessPID(port)
 	if len(pid) < 1 {
 		return fmt.Errorf("not find port exe,:%s", port)
 	}
-	killCmd := exec.Command("taskkill", "/F", "/PID", pid)
-	err := killCmd.Run()
-	if err != nil {
+	arg := []string{"/PID", pid}
+	if force {
+		arg = []string{"/F", "/PID", pid}
+	}
+	killCmd := exec.Command("taskkill", arg...)
+	if err := killCmd.Run(); err != nil {
 		return err
 	}
-
+	if err := killCmd.Wait(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func killProcess(processName string, force bool) error {
+	arg := []string{"/IM", processName}
+	if force {
+		arg = []string{"/F", "/IM", processName}
+	}
+	cmd := exec.Command("taskkill", arg...)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkProcessRunning(processName string) (bool, error) {
+	cmd := exec.Command("tasklist", "/FI", "IMAGENAME eq "+processName, "/FO", "CSV")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, err
+	}
+
+	return strings.Contains(string(output), processName), nil
+}
+
+func killVnc(force bool) {
+	_ = killProcess("TightVNCServerPortable.exe", force)
+	_ = killProcess("tvnserver.exe", force)
+	_ = killProcessUsingPort("5900", force)
 }
 
 func exit(srv *http.Server) {
@@ -88,21 +125,18 @@ func exit(srv *http.Server) {
 	if err := srv.Shutdown(ctx); err != nil {
 		errs = append(errs, err)
 	}
-	if err := killProcessUsingPort("5900"); err != nil {
-		errs = append(errs, err)
-	}
-	for _, err := range errs {
-		log.Println(err)
-	}
-	if len(errs) > 0 {
-		os.Exit(1)
-	}
+	killVnc(false)
 	os.Exit(0)
 }
 
 func main() {
-	if err := killProcessUsingPort("5900"); err == nil {
-		time.Sleep(time.Second * 3)
+	shutdown := "false"
+	flag.StringVar(&shutdown, "close", "false", "")
+	flag.Parse()
+	killVnc(true)
+	if shutdown == "true" {
+		os.Exit(0)
+		return
 	}
 	if err := os.RemoveAll(".tight_vnc"); err != nil {
 		log.Fatalln(err)
@@ -111,9 +145,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	go func() {
-		if err := exec.Command(".cache/tight_vnc/TightVNCServerPortable.exe").Run(); err != nil {
-			log.Fatalln(err)
-		}
+		_ = exec.Command(".cache/tight_vnc/TightVNCServerPortable.exe").Run()
 	}()
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.Default()
@@ -145,14 +177,23 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(time.Second * 3)
-			if len(findWindowsPortPid("5900")) == 0 {
-				exit(srv)
+			if len(findWindowsPortProcessPID("5900")) == 0 {
+				running, _ := checkProcessRunning("TightVNCServerPortable.exe")
+				if running {
+					killVnc(false)
+					time.Sleep(time.Second * 3)
+					go func() {
+						_ = exec.Command(".cache/tight_vnc/TightVNCServerPortable.exe").Run()
+					}()
+					continue
+				}
+				go exit(srv)
 			}
 		}
 	}()
 
 	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
 	exit(srv)
