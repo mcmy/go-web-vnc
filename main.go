@@ -77,6 +77,29 @@ func killProcessUsingPort(port string) error {
 	return nil
 }
 
+func exit(srv *http.Server) {
+	go func() {
+		time.Sleep(time.Second * 5)
+		os.Exit(1)
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var errs []error
+	if err := srv.Shutdown(ctx); err != nil {
+		errs = append(errs, err)
+	}
+	if err := killProcessUsingPort("5900"); err != nil {
+		errs = append(errs, err)
+	}
+	for _, err := range errs {
+		log.Println(err)
+	}
+	if len(errs) > 0 {
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
 func main() {
 	if err := killProcessUsingPort("5900"); err == nil {
 		time.Sleep(time.Second * 3)
@@ -90,14 +113,6 @@ func main() {
 	go func() {
 		if err := exec.Command(".cache/tight_vnc/TightVNCServerPortable.exe").Run(); err != nil {
 			log.Fatalln(err)
-		}
-	}()
-	go func() {
-		for {
-			time.Sleep(time.Second * 3)
-			if len(findWindowsPortPid("5900")) == 0 {
-				log.Fatalln("vnc is shutdown")
-			}
 		}
 	}()
 	gin.SetMode(gin.ReleaseMode)
@@ -127,24 +142,20 @@ func main() {
 		}
 	}()
 
+	go func() {
+		for {
+			time.Sleep(time.Second * 3)
+			if len(findWindowsPortPid("5900")) == 0 {
+				exit(srv)
+			}
+		}
+	}()
+
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
 
-	log.Println("Shutdown Server ...")
-	go func() {
-		time.Sleep(time.Second * 5)
-		os.Exit(1)
-	}()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server Shutdown:", err)
-	}
-	if err := killProcessUsingPort("5900"); err != nil {
-		log.Fatal("Server Shutdown:", err)
-	}
+	exit(srv)
 }
 
 func NewVNCProxy() *vnc_proxy.Proxy {
