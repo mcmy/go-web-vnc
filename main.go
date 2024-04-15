@@ -11,7 +11,6 @@ import (
 	"golang.org/x/net/websocket"
 	"io/fs"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,6 +18,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -43,22 +43,12 @@ func init() {
 	//}
 }
 
-func isPortOpen(port string) bool {
-	ln, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		return false
-	}
-	defer func(ln net.Listener) {
-		_ = ln.Close()
-	}(ln)
-	return true
-}
-
-func killProcessUsingPort(port string) error {
+func findWindowsPortPid(port string) string {
 	cmd := exec.Command("cmd", "/C", "netstat -aon | findstr", fmt.Sprintf(":%s", port))
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.Output()
 	if err != nil {
-		return err
+		return ""
 	}
 
 	lines := strings.Split(string(output), "\n")
@@ -70,9 +60,16 @@ func killProcessUsingPort(port string) error {
 			break
 		}
 	}
+	return pid
+}
 
+func killProcessUsingPort(port string) error {
+	pid := findWindowsPortPid(port)
+	if len(pid) < 1 {
+		return fmt.Errorf("not find port exe,:%s", port)
+	}
 	killCmd := exec.Command("taskkill", "/F", "/PID", pid)
-	err = killCmd.Run()
+	err := killCmd.Run()
 	if err != nil {
 		return err
 	}
@@ -97,9 +94,9 @@ func main() {
 	}()
 	go func() {
 		for {
-			time.Sleep(time.Second * 5)
-			if !isPortOpen("5900") {
-				log.Fatalln("vnc shutdown")
+			time.Sleep(time.Second * 3)
+			if len(findWindowsPortPid("5900")) == 0 {
+				log.Fatalln("vnc is shutdown")
 			}
 		}
 	}()
@@ -135,19 +132,19 @@ func main() {
 	<-quit
 
 	log.Println("Shutdown Server ...")
-
+	go func() {
+		time.Sleep(time.Second * 5)
+		os.Exit(1)
+	}()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	if err := killProcessUsingPort("5900"); err != nil {
-		log.Fatal("Server Shutdown:", err)
-	}
 
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal("Server Shutdown:", err)
 	}
-
-	log.Println("Server exiting")
+	if err := killProcessUsingPort("5900"); err != nil {
+		log.Fatal("Server Shutdown:", err)
+	}
 }
 
 func NewVNCProxy() *vnc_proxy.Proxy {
