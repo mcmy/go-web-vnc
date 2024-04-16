@@ -74,10 +74,8 @@ func killProcessUsingPort(port string, force bool) error {
 		arg = []string{"/F", "/PID", pid}
 	}
 	killCmd := exec.Command("taskkill", arg...)
+	killCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err := killCmd.Run(); err != nil {
-		return err
-	}
-	if err := killCmd.Wait(); err != nil {
 		return err
 	}
 	return nil
@@ -89,10 +87,8 @@ func killProcess(processName string, force bool) error {
 		arg = []string{"/F", "/IM", processName}
 	}
 	cmd := exec.Command("taskkill", arg...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err := cmd.Run(); err != nil {
-		return err
-	}
-	if err := cmd.Wait(); err != nil {
 		return err
 	}
 	return nil
@@ -100,6 +96,7 @@ func killProcess(processName string, force bool) error {
 
 func checkProcessRunning(processName string) (bool, error) {
 	cmd := exec.Command("tasklist", "/FI", "IMAGENAME eq "+processName, "/FO", "CSV")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, err := cmd.Output()
 	if err != nil {
 		return false, err
