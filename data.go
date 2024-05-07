@@ -1,0 +1,79 @@
+package main
+
+type TightVNCSettings struct {
+	QueryTimeout                uint32
+	QueryAcceptOnTimeout        uint32
+	LocalInputPriorityTimeout   uint32
+	LocalInputPriority          uint32
+	BlockRemoteInput            uint32
+	BlockLocalInput             uint32
+	ExtraPorts                  string
+	IpAccessControl             string
+	RfbPort                     uint32
+	HttpPort                    uint32
+	DisconnectAction            uint32
+	AcceptRfbConnections        uint32
+	UseVncAuthentication        uint32
+	UseControlAuthentication    uint32
+	RepeatControlAuthentication uint32
+	LoopbackOnly                uint32
+	AcceptHttpConnections       uint32
+	LogLevel                    uint32
+	EnableFileTransfers         uint32
+	RemoveWallpaper             uint32
+	UseD3D                      uint32
+	UseMirrorDriver             uint32
+	EnableUrlParams             uint32
+	AlwaysShared                uint32
+	NeverShared                 uint32
+	DisconnectClients           uint32
+	PollingInterval             uint32
+	AllowLoopback               uint32
+	VideoRecognitionInterval    uint32
+	GrabTransparentWindows      uint32
+	SaveLogToAllUsersPath       uint32
+	RunControlInterface         uint32
+	ConnectToRdp                uint32
+	IdleTimeout                 uint32
+	VideoClasses                string
+	VideoRects                  string
+}
+
+var settings = TightVNCSettings{
+	QueryTimeout:                0x1e,
+	QueryAcceptOnTimeout:        0x0,
+	LocalInputPriorityTimeout:   0x3,
+	LocalInputPriority:          0x0,
+	BlockRemoteInput:            0x0,
+	BlockLocalInput:             0x0,
+	ExtraPorts:                  "",
+	IpAccessControl:             "",
+	RfbPort:                     0x170c,
+	HttpPort:                    0x16a8,
+	DisconnectAction:            0x0,
+	AcceptRfbConnections:        0x1,
+	UseVncAuthentication:        0x0,
+	UseControlAuthentication:    0x0,
+	RepeatControlAuthentication: 0x0,
+	LoopbackOnly:                0x0,
+	AcceptHttpConnections:       0x0,
+	LogLevel:                    0x0,
+	EnableFileTransfers:         0x1,
+	RemoveWallpaper:             0x1,
+	UseD3D:                      0x1,
+	UseMirrorDriver:             0x1,
+	EnableUrlParams:             0x1,
+	AlwaysShared:                0x0,
+	NeverShared:                 0x0,
+	DisconnectClients:           0x1,
+	PollingInterval:             0x3e8,
+	AllowLoopback:               0x0,
+	VideoRecognitionInterval:    0xbb8,
+	GrabTransparentWindows:      0x1,
+	SaveLogToAllUsersPath:       0x0,
+	RunControlInterface:         0x1,
+	ConnectToRdp:                0x0,
+	IdleTimeout:                 0x0,
+	VideoClasses:                "",
+	VideoRects:                  "",
+}
