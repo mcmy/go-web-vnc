@@ -6,4 +6,6 @@
 - :9091/vnc/
 
 ##### 构建方式
-go build -ldflags "-s -w -H=windowsgui"
+go build
+
+或者隐藏到后台运行： go build -ldflags "-s -w -H=windowsgui"
