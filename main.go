@@ -40,6 +40,13 @@ func init() {
 }
 
 func main() {
+	if findWindowsPortProcessPID(fmt.Sprintf("%d", settings.RfbPort)) != "" {
+		_ = exec.Command(".cache/tvnc/tvnserver.exe", "-stop").Run()
+		time.Sleep(time.Millisecond * 500)
+		_ = killProcessUsingPort(fmt.Sprintf("%d", settings.RfbPort), true)
+		_ = killProcessUsingPort(fmt.Sprintf("%d", conf.Conf.AppInfo.Port), true)
+		time.Sleep(time.Second)
+	}
 	if err := os.RemoveAll(".cache"); err != nil {
 		log.Fatalln(err)
 	}
@@ -53,12 +60,18 @@ func main() {
 
 	go func() {
 		_ = exec.Command(".cache/tvnc/tvnserver.exe", "-install", "-silent").Run()
-		time.Sleep(time.Second)
 		for {
-			if findWindowsPortProcessPID(fmt.Sprintf("%d1", settings.RfbPort)) == "" {
-				_ = exec.Command(".cache/tvnc/tvnserver.exe", "-start", "-silent").Run()
+			time.Sleep(time.Second)
+			if findWindowsPortProcessPID(fmt.Sprintf("%d", settings.RfbPort)) != "" {
+				break
 			}
-			time.Sleep(time.Second * 3)
+			_ = exec.Command(".cache/tvnc/tvnserver.exe", "-start").Run()
+		}
+		for {
+			time.Sleep(time.Second)
+			if findWindowsPortProcessPID(fmt.Sprintf("%d", settings.RfbPort)) == "" {
+				os.Exit(0)
+			}
 		}
 	}()
 
@@ -98,7 +111,8 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Println(err)
 	}
-	_ = exec.Command(".cache/tvnc/tvnserver.exe", "-stop", "-silent").Run()
+	_ = exec.Command(".cache/tvnc/tvnserver.exe", "-stop").Run()
+	_ = killProcessUsingPort(fmt.Sprintf("%d", settings.RfbPort), true)
 	if err := os.RemoveAll(".cache"); err != nil {
 		log.Println(err)
 	}
